@@ -10,6 +10,40 @@ const PORT = process.env.PORT || 3000;
 const CWA_API_BASE_URL = "https://opendata.cwa.gov.tw/api";
 const CWA_API_KEY = process.env.CWA_API_KEY;
 
+// 快取設定
+const CACHE_TTL = 10 * 60 * 1000; // 快取時間：10 分鐘（毫秒）
+const weatherCache = new Map(); // 儲存快取資料
+
+/**
+ * 取得快取資料
+ * @param {string} key - 快取鍵值
+ * @returns {object|null} - 快取資料或 null
+ */
+const getCache = (key) => {
+  const cached = weatherCache.get(key);
+  if (!cached) return null;
+
+  // 檢查是否過期
+  if (Date.now() - cached.timestamp > CACHE_TTL) {
+    weatherCache.delete(key);
+    return null;
+  }
+
+  return cached.data;
+};
+
+/**
+ * 設定快取資料
+ * @param {string} key - 快取鍵值
+ * @param {object} data - 要快取的資料
+ */
+const setCache = (key, data) => {
+  weatherCache.set(key, {
+    data,
+    timestamp: Date.now(),
+  });
+};
+
 // 全台 22 縣市對照表（英文代碼 -> 中文名稱）
 const CITY_MAP = {
   taipei: "臺北市",
@@ -50,7 +84,8 @@ app.use(express.urlencoded({ extended: true }));
 const getCityWeather = async (req, res) => {
   try {
     const { city } = req.params;
-    const cityName = CITY_MAP[city.toLowerCase()];
+    const cityCode = city.toLowerCase();
+    const cityName = CITY_MAP[cityCode];
 
     // 檢查縣市代碼是否有效
     if (!cityName) {
@@ -58,6 +93,17 @@ const getCityWeather = async (req, res) => {
         error: "無效的縣市代碼",
         message: `請使用有效的縣市代碼`,
         availableCities: Object.keys(CITY_MAP),
+      });
+    }
+
+    // 檢查快取
+    const cacheKey = `weather_${cityCode}`;
+    const cachedData = getCache(cacheKey);
+    if (cachedData) {
+      return res.json({
+        success: true,
+        data: cachedData,
+        cached: true,
       });
     }
 
@@ -137,9 +183,13 @@ const getCityWeather = async (req, res) => {
       weatherData.forecasts.push(forecast);
     }
 
+    // 儲存到快取
+    setCache(cacheKey, weatherData);
+
     res.json({
       success: true,
       data: weatherData,
+      cached: false,
     });
   } catch (error) {
     console.error("取得天氣資料失敗:", error.message);
