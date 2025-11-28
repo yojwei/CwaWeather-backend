@@ -1,11 +1,12 @@
 # CWA 天氣預報 API 服務
 
-這是一個使用 Node.js + Express 開發的天氣預報 API 服務，串接中央氣象署（CWA）開放資料平台，提供台中市天氣預報資料。
+這是一個使用 Node.js + Express 開發的天氣預報 API 服務，串接中央氣象署（CWA）開放資料平台，提供全台 22 縣市天氣預報資料。
 
 ## 功能特色
 
 - ✅ 串接 CWA 氣象資料開放平台
-- ✅ 取得台中市 36 小時天氣預報
+- ✅ 支援全台 22 縣市天氣預報
+- ✅ 獲取 36 小時天氣預報資料
 - ✅ 環境變數管理
 - ✅ RESTful API 設計
 - ✅ CORS 支援
@@ -72,9 +73,11 @@ GET /
 {
   "message": "歡迎使用 CWA 天氣預報 API",
   "endpoints": {
-    "kaohsiung": "/api/weather/kaohsiung",
+    "weather": "/api/weather/:city",
+    "cities": "/api/cities",
     "health": "/api/health"
-  }
+  },
+  "example": "/api/weather/taipei"
 }
 ```
 
@@ -93,19 +96,47 @@ GET /api/health
 }
 ```
 
-### 3. 取得台中天氣預報
+### 3. 取得所有可用縣市
 
 ```
-GET /api/weather/taichung
+GET /api/cities
 ```
 
-回應範例：
+回應：
+
+```json
+{
+  "success": true,
+  "data": [
+    { "code": "taipei", "name": "臺北市" },
+    { "code": "newtaipei", "name": "新北市" },
+    { "code": "keelung", "name": "基隆市" },
+    ...
+  ]
+}
+```
+
+### 4. 取得指定縣市天氣預報
+
+```
+GET /api/weather/:city
+```
+
+**路徑參數：**
+- `city` - 縣市英文代碼（例如：taipei, taichung, kaohsiung）
+
+**範例：**
+```
+GET /api/weather/taipei
+```
+
+**回應範例：**
 
 ```json
 {
   "success": true,
   "data": {
-    "city": "台中市",
+    "city": "臺北市",
     "updateTime": "資料更新時間說明",
     "forecasts": [
       {
@@ -115,13 +146,28 @@ GET /api/weather/taichung
         "rain": "10%",
         "minTemp": "25°C",
         "maxTemp": "32°C",
-        "comfort": "悶熱",
-        "windSpeed": "偏南風 3-4 級"
+        "comfort": "悶熱"
       }
     ]
   }
 }
 ```
+
+## 支援的縣市代碼
+
+| 代碼          | 縣市   | 代碼         | 縣市   |
+| ------------- | ------ | ------------ | ------ |
+| taipei        | 臺北市 | tainan       | 臺南市 |
+| newtaipei     | 新北市 | kaohsiung    | 高雄市 |
+| keelung       | 基隆市 | pingtung     | 屏東縣 |
+| taoyuan       | 桃園市 | yilan        | 宜蘭縣 |
+| hsinchu       | 新竹市 | hualien      | 花蓮縣 |
+| hsinchucounty | 新竹縣 | taitung      | 臺東縣 |
+| miaoli        | 苗栗縣 | penghu       | 澎湖縣 |
+| taichung      | 臺中市 | kinmen       | 金門縣 |
+| changhua      | 彰化縣 | lienchiang   | 連江縣 |
+| nantou        | 南投縣 | chiayi       | 嘉義市 |
+| yunlin        | 雲林縣 | chiayicounty | 嘉義縣 |
 
 ## 專案結構
 
@@ -155,6 +201,7 @@ CwaWeather-backend/
 API 會回傳適當的 HTTP 狀態碼和錯誤訊息：
 
 - `200`: 成功
+- `400`: 無效的縣市代碼
 - `404`: 找不到資料
 - `500`: 伺服器錯誤
 
@@ -163,8 +210,38 @@ API 會回傳適當的 HTTP 狀態碼和錯誤訊息：
 ```json
 {
   "error": "錯誤類型",
-  "message": "錯誤訊息"
+  "message": "錯誤訊息",
+  "availableCities": ["taipei", "newtaipei", ...]
 }
+```
+
+## 使用範例
+
+### 使用 curl
+
+```bash
+# 取得臺北市天氣
+curl http://localhost:3000/api/weather/taipei
+
+# 取得所有縣市列表
+curl http://localhost:3000/api/cities
+
+# 取得高雄市天氣
+curl http://localhost:3000/api/weather/kaohsiung
+```
+
+### 使用 JavaScript fetch
+
+```javascript
+// 取得臺中市天氣
+fetch('http://localhost:3000/api/weather/taichung')
+  .then(res => res.json())
+  .then(data => console.log(data));
+
+// 取得所有縣市
+fetch('http://localhost:3000/api/cities')
+  .then(res => res.json())
+  .then(data => console.log(data));
 ```
 
 ## 授權
