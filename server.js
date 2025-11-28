@@ -10,18 +10,57 @@ const PORT = process.env.PORT || 3000;
 const CWA_API_BASE_URL = "https://opendata.cwa.gov.tw/api";
 const CWA_API_KEY = process.env.CWA_API_KEY;
 
+// 全台 22 縣市對照表（英文代碼 -> 中文名稱）
+const CITY_MAP = {
+  taipei: "臺北市",
+  newtaipei: "新北市",
+  keelung: "基隆市",
+  taoyuan: "桃園市",
+  hsinchu: "新竹市",
+  hsinchucounty: "新竹縣",
+  miaoli: "苗栗縣",
+  taichung: "臺中市",
+  changhua: "彰化縣",
+  nantou: "南投縣",
+  yunlin: "雲林縣",
+  chiayi: "嘉義市",
+  chiayicounty: "嘉義縣",
+  tainan: "臺南市",
+  kaohsiung: "高雄市",
+  pingtung: "屏東縣",
+  yilan: "宜蘭縣",
+  hualien: "花蓮縣",
+  taitung: "臺東縣",
+  penghu: "澎湖縣",
+  kinmen: "金門縣",
+  lienchiang: "連江縣",
+};
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /**
- * 取得台中天氣預報
+ * 取得指定縣市天氣預報
  * CWA 氣象資料開放平臺 API
- * 使用「一般天氣預報-今明 36 小時天氣預報」資料集
+ * 使用「一般天氣預報-今明 36 小時天氣預報」資料集 F-C0032-001
+ * @param {string} cityCode - 縣市英文代碼
  */
-const getTaichungWeather = async (req, res) => {
+const getCityWeather = async (req, res) => {
   try {
+    const { city } = req.params;
+    const cityName = CITY_MAP[city.toLowerCase()];
+
+    // 檢查縣市代碼是否有效
+    if (!cityName) {
+      return res.status(400).json({
+        error: "無效的縣市代碼",
+        message: `請使用有效的縣市代碼`,
+        availableCities: Object.keys(CITY_MAP),
+      });
+    }
+
     // 檢查是否有設定 API Key
     if (!CWA_API_KEY) {
       return res.status(500).json({
@@ -37,18 +76,18 @@ const getTaichungWeather = async (req, res) => {
       {
         params: {
           Authorization: CWA_API_KEY,
-          locationName: "臺中市",
+          locationName: cityName,
         },
       }
     );
 
-    // 取得台中市的天氣資料
+    // 取得指定縣市的天氣資料
     const locationData = response.data.records.location[0];
 
     if (!locationData) {
       return res.status(404).json({
         error: "查無資料",
-        message: "無法取得台中市天氣資料",
+        message: `無法取得${cityName}天氣資料`,
       });
     }
 
@@ -72,29 +111,25 @@ const getTaichungWeather = async (req, res) => {
         minTemp: "",
         maxTemp: "",
         comfort: "",
-        windSpeed: "",
       };
 
       weatherElements.forEach((element) => {
         const value = element.time[i].parameter;
         switch (element.elementName) {
-          case "Wx":
+          case "Wx": // 天氣現象
             forecast.weather = value.parameterName;
             break;
-          case "PoP":
+          case "PoP": // 降雨機率
             forecast.rain = value.parameterName + "%";
             break;
-          case "MinT":
+          case "MinT": // 最低溫度
             forecast.minTemp = value.parameterName + "°C";
             break;
-          case "MaxT":
+          case "MaxT": // 最高溫度
             forecast.maxTemp = value.parameterName + "°C";
             break;
-          case "CI":
+          case "CI": // 舒適度
             forecast.comfort = value.parameterName;
-            break;
-          case "WS":
-            forecast.windSpeed = value.parameterName;
             break;
         }
       });
@@ -131,9 +166,11 @@ app.get("/", (req, res) => {
   res.json({
     message: "歡迎使用 CWA 天氣預報 API",
     endpoints: {
-      taichung: "/api/weather/taichung",
+      weather: "/api/weather/:city",
+      cities: "/api/cities",
       health: "/api/health",
     },
+    example: "/api/weather/taipei",
   });
 });
 
@@ -141,8 +178,19 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
-// 取得台中天氣預報
-app.get("/api/weather/taichung", getTaichungWeather);
+// 取得所有可用縣市列表
+app.get("/api/cities", (req, res) => {
+  res.json({
+    success: true,
+    data: Object.entries(CITY_MAP).map(([code, name]) => ({
+      code,
+      name,
+    })),
+  });
+});
+
+// 取得指定縣市天氣預報
+app.get("/api/weather/:city", getCityWeather);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
