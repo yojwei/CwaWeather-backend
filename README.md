@@ -1,11 +1,11 @@
 # CWA 天氣預報 API 服務
 
-這是一個使用 Node.js + Express 開發的天氣預報 API 服務，串接中央氣象署（CWA）開放資料平台，提供高雄市天氣預報資料。
+這是一個使用 Node.js + Express 開發的天氣預報 API 服務，串接中央氣象署（CWA）開放資料平台，提供台中市天氣預報資料。
 
 ## 功能特色
 
 - ✅ 串接 CWA 氣象資料開放平台
-- ✅ 取得高雄市 36 小時天氣預報
+- ✅ 取得台中市 36 小時天氣預報
 - ✅ 環境變數管理
 - ✅ RESTful API 設計
 - ✅ CORS 支援
@@ -93,10 +93,10 @@ GET /api/health
 }
 ```
 
-### 3. 取得高雄天氣預報
+### 3. 取得台中天氣預報
 
 ```
-GET /api/weather/kaohsiung
+GET /api/weather/taichung
 ```
 
 回應範例：
@@ -105,7 +105,7 @@ GET /api/weather/kaohsiung
 {
   "success": true,
   "data": {
-    "city": "高雄市",
+    "city": "台中市",
     "updateTime": "資料更新時間說明",
     "forecasts": [
       {
